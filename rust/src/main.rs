@@ -1,5 +1,6 @@
 use std::cmp::max;
 use std::hash::Hash;
+use std::vec;
 use std::{
     cmp::{min, Reverse},
     collections::hash_map::Entry,
@@ -64,6 +65,32 @@ fn solve(left: &[u64], right: &[u64]) -> Option<u64> {
     }
     rem.sort_by_key(|&(_, x)| Reverse(x));
 
+    // precalculated swap amounts left
+    let mut max_right_to_left_for_index_swaps = vec![];
+    for i in 0..rem.len() {
+        let mut rem_right = rem[i..].iter().filter(|e| e.0).map(|e| e.1).collect_vec();
+        rem_right.sort();
+        rem_right.reverse();
+
+        let mut sub = vec![0];
+        let mut cum = 0;
+
+        for j in 0..rem_right.len() {
+            cum += rem_right[j];
+            sub.push(cum);
+        }
+
+        max_right_to_left_for_index_swaps.push(sub);
+    }
+    max_right_to_left_for_index_swaps.push(vec![0]);
+    // return None;
+
+    // println!("Problem:");
+    // println!("  left={:?}", left);
+    // println!("  right={:?}", right);
+    // println!("  rem={:?}", rem);
+    // println!("  max={:?}", max_right_to_left_for_index_swaps);
+
     // init
     // TODO smaller keys and values for cache locality?
     let mut min_swaps_for: IntMap<u64, u64> = IntMap::default();
@@ -108,10 +135,26 @@ fn solve(left: &[u64], right: &[u64]) -> Option<u64> {
                 return;
             }
 
-            let max_possible_right_to_left = min(
-                (min_swaps_for_target - swaps).saturating_mul(next_value),
-                rem_sum_right,
-            );
+            // let old_max_possible_right_to_left = min(
+            //     (min_swaps_for_target - swaps).saturating_mul(next_value),
+            //     rem_sum_right,
+            // );
+
+            let swaps_left = min_swaps_for_target - swaps;
+            assert!(swaps_left > 0);
+            let inner = &max_right_to_left_for_index_swaps[i+1];
+            let max_possible_right_to_left = inner[min(swaps_left as usize, inner.len() - 1)];
+
+            // assert!(
+            //     max_possible_right_to_left <= rem_sum_right,
+            //     "Sit i={}, swaps_left={} -> {}, rem_sum_right={}",
+            //     i+1,
+            //     swaps_left,
+            //     max_possible_right_to_left,
+            //     rem_sum_right
+            // );
+            // assert!(max_possible_right_to_left <= old_max_possible_right_to_left);
+
             if target < value_left {
                 return;
             }
