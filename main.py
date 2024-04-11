@@ -16,7 +16,6 @@ def solve_dynamic(left, right):
     # print(f"  right={right}")
     # print(f"  target={target}")
 
-    rem_left = sum(left)
     rem = [(False, x) for x in left] + [(True, x) for x in right]
     rem.sort(key=lambda e: -e[1])  # TODO try different ways to sort
 
@@ -24,22 +23,37 @@ def solve_dynamic(left, right):
     min_swaps_for_value_left = {0: 0}
     min_swaps_for_target = math.inf
 
+    rem_sum_left = sum(left)
+    rem_sum_right = sum(right)
+
     for i, (curr_was_right, curr_value) in enumerate(rem):
         # print(f"# {i}/{len(rem)}", flush=True)
-        # assert rem_left == sum(x[1] for x in rem[i:] if not x[0])
-        rem_left -= (not curr_was_right) * curr_value
+        # assert rem_sum_left == sum(x[1] for x in rem[i:] if not x[0])
+        # assert rem_sum_right == sum(x[1] for x in rem[i:] if x[0])
+
+        next_value = rem[i + 1][1] if i + 1 < len(rem) else 0
+
+        rem_sum_left -= (not curr_was_right) * curr_value
+        rem_sum_right -= curr_was_right * curr_value
 
         next_min_swaps_for_value_left = {}
 
         def add(value, swaps):
-            # TODO add more cuts
-
             nonlocal min_swaps_for_target
             if swaps >= min_swaps_for_target:
                 return
 
-            if value + rem_left == target:
+            if value + rem_sum_left == target:
                 min_swaps_for_target = min(min_swaps_for_target, swaps)
+                return
+
+            max_possible_right_to_left = min(
+                (min_swaps_for_target - swaps) * next_value,
+                rem_sum_right,
+            )
+            if target < value:
+                return
+            if value + rem_sum_left + max_possible_right_to_left < target:
                 return
 
             prev = next_min_swaps_for_value_left.get(value)
@@ -52,7 +66,8 @@ def solve_dynamic(left, right):
 
         min_swaps_for_value_left = next_min_swaps_for_value_left
 
-    assert rem_left == 0
+    assert rem_sum_right == 0
+    assert rem_sum_left == 0
 
     if min_swaps_for_target == math.inf:
         min_swaps_for_target = None
