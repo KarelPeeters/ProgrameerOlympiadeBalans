@@ -100,22 +100,42 @@ fn solve(left: &[u64], right: &[u64]) -> Option<u64> {
 
         // TODO replace with just an extra tiny for loop
         let mut add = |value_left, swaps| {
+            // too many steps used?
             if swaps >= min_swaps_for_target {
                 return;
             }
+
+            // reached target
             if value_left + rem_sum_left == target {
                 min_swaps_for_target = min(min_swaps_for_target, swaps);
                 return;
             }
 
+            // overshot left target
+            if value_left > target  {
+                return;
+            }
+            // overshot right target
+            let value_right = total - value_left - rem_sum_left - rem_sum_right;
+            if value_right > target  {
+                return;
+            }
+
+            // can't reach left target any more
             let max_possible_right_to_left = min(
                 (min_swaps_for_target - swaps).saturating_mul(next_value),
                 rem_sum_right,
             );
-            if target < value_left {
+            if value_left + rem_sum_left + max_possible_right_to_left < target {
                 return;
             }
-            if value_left + rem_sum_left + max_possible_right_to_left < target {
+
+            // can't reach right target any more
+            let max_possible_left_to_right = min(
+                (min_swaps_for_target - swaps).saturating_mul(next_value),
+                rem_sum_left,
+            );
+            if value_right + rem_sum_right + max_possible_left_to_right < target {
                 return;
             }
 
