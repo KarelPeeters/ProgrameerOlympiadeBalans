@@ -13,29 +13,45 @@ def solve_custom_impl(
     swap_budget: int,
     rem: List[Tuple[bool, int]],
     rem_sum_left: int,
-    rem_sum: int,
+    rem_sum_right: int,
 ) -> int:
+    # log
     # print(target, curr_sum_left, swap_budget, rem, rem_sum_left, rem_sum)
 
-    # TODO comment out
-    expected_rem_sum_left = sum(x[1] for x in rem if not x[0])
-    assert (
-        expected_rem_sum_left == rem_sum_left
-    ), f"Expected {expected_rem_sum_left}, got {rem_sum}"
-    assert rem_sum == sum(x[1] for x in rem)
+    # invariant
+    # exp_rem_sum_left = sum(x[1] for x in rem if not x[0])
+    # exp_rem_sum_right = sum(x[1] for x in rem if x[0])
+    # assert (
+    #     exp_rem_sum_left == rem_sum_left
+    # ), f"Expected {exp_rem_sum_left}, got {rem_sum_left}"
+    # assert (
+    #     exp_rem_sum_right == exp_rem_sum_right
+    # ), f"Expected {exp_rem_sum_right}, got {exp_rem_sum_right}"
 
     if curr_sum_left + rem_sum_left == target:
         return 0
     if swap_budget == 0 or not rem:
         return None
-    if target < curr_sum_left or curr_sum_left + rem_sum < target:
-        return None
 
-    # TODO combine both earlier cuts into one stronger one (N*max(rem))
+    # overshot target?
+    if target < curr_sum_left:
+        return None
 
     # current value to make swap decision on
     curr_was_right, curr_value = rem[0]
-    rem = rem[1:]
+    next_rem = rem[1:]
+
+    # undershot target
+    # TODO add flipped bound too, or is that redundant?
+    max_possible_right_to_left = min(
+        swap_budget * curr_value,
+        rem_sum_right,
+    )
+    if curr_sum_left + rem_sum_left + max_possible_right_to_left < target:
+        return None
+
+    next_rem_sum_left = rem_sum_left - (not curr_was_right) * curr_value
+    next_rem_sum_right = rem_sum_right - (curr_was_right) * curr_value
 
     # try not swapping first
     # print("keep")
@@ -43,9 +59,9 @@ def solve_custom_impl(
         target=target,
         curr_sum_left=curr_sum_left + (not curr_was_right) * curr_value,
         swap_budget=swap_budget,
-        rem=rem,
-        rem_sum_left=rem_sum_left - (not curr_was_right) * curr_value,
-        rem_sum=rem_sum - curr_value,
+        rem=next_rem,
+        rem_sum_left=next_rem_sum_left,
+        rem_sum_right=next_rem_sum_right,
     )
     if result_no_swap is not None:
         swap_budget = min(swap_budget, result_no_swap - 1)
@@ -56,9 +72,9 @@ def solve_custom_impl(
         target=target,
         curr_sum_left=curr_sum_left + curr_was_right * curr_value,
         swap_budget=swap_budget - 1,
-        rem=rem,
-        rem_sum_left=rem_sum_left - (not curr_was_right) * curr_value,
-        rem_sum=rem_sum - curr_value,
+        rem=next_rem,
+        rem_sum_left=next_rem_sum_left,
+        rem_sum_right=next_rem_sum_right,
     )
     if result_swap is not None:
         result_swap += 1
@@ -73,9 +89,7 @@ def solve_custom_impl(
 
 def solve_custom(left, right):
     # prepare stuff
-    total_left = sum(left)
-    total = total_left + sum(right)
-
+    total = sum(left) + sum(right)
     if total % 2 != 0:
         return None
     target = total // 2
@@ -92,8 +106,8 @@ def solve_custom(left, right):
         curr_sum_left=0,
         swap_budget=math.inf,
         rem=rem,
-        rem_sum_left=total_left,
-        rem_sum=total,
+        rem_sum_left=sum(left),
+        rem_sum_right=sum(right),
     )
 
 
@@ -153,6 +167,7 @@ def main():
                 print(case + 1, "onmogelijk")
             else:
                 print(case + 1, r)
+            sys.stdout.flush()
 
 
 if __name__ == "__main__":
