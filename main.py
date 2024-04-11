@@ -1,6 +1,6 @@
 import math
 import sys
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 from ortools.sat.python import cp_model
 
 
@@ -14,6 +14,8 @@ def solve_custom_impl(
     rem: List[Tuple[bool, int]],
     rem_sum_left: int,
     rem_sum_right: int,
+    # TODO full pareto frontier!
+    cache: Dict[Tuple[int, int], int],
 ) -> int:
     # log
     # print(target, curr_sum_left, swap_budget, rem, rem_sum_left, rem_sum)
@@ -50,6 +52,13 @@ def solve_custom_impl(
     if curr_sum_left + rem_sum_left + max_possible_right_to_left < target:
         return None
 
+    # check cache
+    cache_key = (curr_sum_left, len(rem))
+    cache_value = cache.get(cache_key)
+    if cache_value is not None:
+        print("cache hit")
+        return cache_value
+
     next_rem_sum_left = rem_sum_left - (not curr_was_right) * curr_value
     next_rem_sum_right = rem_sum_right - (curr_was_right) * curr_value
 
@@ -62,6 +71,7 @@ def solve_custom_impl(
         rem=next_rem,
         rem_sum_left=next_rem_sum_left,
         rem_sum_right=next_rem_sum_right,
+        cache=cache,
     )
     if result_no_swap is not None:
         swap_budget = min(swap_budget, result_no_swap - 1)
@@ -75,16 +85,27 @@ def solve_custom_impl(
         rem=next_rem,
         rem_sum_left=next_rem_sum_left,
         rem_sum_right=next_rem_sum_right,
+        cache=cache,
     )
     if result_swap is not None:
         result_swap += 1
 
     # return the best option if any
     if result_swap is None:
-        return result_no_swap
-    if result_no_swap is None:
-        return result_swap
-    return min(result_no_swap, result_swap)
+        result = result_no_swap
+    elif result_no_swap is None:
+        result = result_swap
+    else:
+        result = min(result_no_swap, result_swap)
+
+    # update cache
+    # TODO also update if result is None, but only us it if the current swap budget is lower or equal
+    if result is not None:
+        cache[cache_key] = result
+    # else:
+    #     print(f"failed to write cache with key={cache_key}")
+
+    return result
 
 
 def solve_custom(left, right):
@@ -101,6 +122,7 @@ def solve_custom(left, right):
     sys.setrecursionlimit(max(sys.getrecursionlimit(), 10 + len(rem)))
 
     # solve!
+    cache = {}
     return solve_custom_impl(
         target=target,
         curr_sum_left=0,
@@ -108,6 +130,7 @@ def solve_custom(left, right):
         rem=rem,
         rem_sum_left=sum(left),
         rem_sum_right=sum(right),
+        cache=cache,
     )
 
 
