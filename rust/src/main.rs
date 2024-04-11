@@ -63,11 +63,11 @@ fn solve(left: &[u64], right: &[u64]) -> Option<u64> {
 
     // init
     // TODO smaller keys and values for cache locality?
-    let mut min_swaps_for: IntMap<u64> = IntMap::default();
-    let mut next_min_swaps_for: IntMap<u64> = IntMap::default();
+    let mut min_swaps_for: Vec<u64> = vec![];
+    let mut next_min_swaps_for: Vec<u64> = vec![];
     let mut min_swaps_for_target = u64::MAX;
 
-    min_swaps_for.insert(0, 0);
+    min_swaps_for.push(0);
 
     let mut rem_sum_left = total_left;
     let mut rem_sum_right = total_right;
@@ -77,7 +77,7 @@ fn solve(left: &[u64], right: &[u64]) -> Option<u64> {
         if min_swaps_for.is_empty() {
             break;
         }
-        assert!(next_min_swaps_for.is_empty());
+        // assert!(next_min_swaps_for.is_empty());
 
         let next_value = rem.get(i + 1).map_or(0, |&(_, x)| x);
         if curr_was_right {
@@ -110,12 +110,18 @@ fn solve(left: &[u64], right: &[u64]) -> Option<u64> {
             insert_if_less(&mut next_min_swaps_for, value_left, swaps);
         };
 
-        for (&v, &s) in min_swaps_for.iter() {
+        // TODO faster iteration over sparse vec
+        for (v, &s) in enumerate(&min_swaps_for) {
+            if s == u64::MAX {
+                continue;
+            }
+
+            let v = v as u64;
             add(v + if !curr_was_right { curr_value } else { 0 }, s);
             add(v + if curr_was_right { curr_value } else { 0 }, s + 1);
         }
 
-        min_swaps_for.clear();
+        min_swaps_for.fill(u64::MAX);
         std::mem::swap(&mut min_swaps_for, &mut next_min_swaps_for);
     }
 
@@ -127,16 +133,13 @@ fn solve(left: &[u64], right: &[u64]) -> Option<u64> {
     // min_swaps_for.get(&target).copied()
 }
 
-fn insert_if_less<V: Ord>(map: &mut IntMap<V>, key: u64, value: V) {
-    match map.entry(key) {
-        Entry::Occupied(mut entry) => {
-            let prev = entry.get_mut();
-            if &*prev > &value {
-                *prev = value;
-            }
-        }
-        Entry::Vacant(entry) => {
-            entry.insert(value);
-        }
+fn insert_if_less(map: &mut Vec<u64>, key: u64, value: u64) {
+    if map.len() <= key as usize {
+        map.resize((key + 1) as usize, u64::MAX);
+    }
+
+    let prev = &mut map[key as usize];
+    if &*prev > &value {
+        *prev = value;
     }
 }
