@@ -172,7 +172,7 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
             return Some(swaps);
         }
 
-        if max_swaps > min(left.len(), right.len()) {
+        if max_swaps > max(left.len(), right.len()) {
             break;
         }
     }
