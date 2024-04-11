@@ -23,13 +23,13 @@ fn main() {
         s.trim().to_owned()
     };
 
-    let cases: u64 = read_line().parse().unwrap();
+    let cases: u32 = read_line().parse().unwrap();
     for case in 0..cases {
-        let left: Vec<u64> = read_line()
+        let left: Vec<u32> = read_line()
             .split_terminator(" ")
             .map(|s| s.parse().unwrap())
             .collect();
-        let right: Vec<u64> = read_line()
+        let right: Vec<u32> = read_line()
             .split_terminator(" ")
             .map(|s| s.parse().unwrap())
             .collect();
@@ -43,10 +43,10 @@ fn main() {
     }
 }
 
-fn solve(left: &[u64], right: &[u64]) -> Option<u64> {
+fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
     // calculate target
-    let total_left: u64 = left.iter().copied().sum();
-    let total_right: u64 = right.iter().copied().sum();
+    let total_left: u32 = left.iter().copied().sum();
+    let total_right: u32 = right.iter().copied().sum();
 
     let total = total_left + total_right;
     if total % 2 != 0 {
@@ -65,9 +65,8 @@ fn solve(left: &[u64], right: &[u64]) -> Option<u64> {
     rem.sort_by_key(|&(_, x)| Reverse(x));
 
     // init
-    // TODO smaller keys and values for cache locality?
-    let mut min_swaps_for: IntMap<u64, u64> = IntMap::default();
-    let mut min_swaps_for_target = u64::MAX;
+    let mut min_swaps_for: IntMap<u32, u32> = IntMap::default();
+    let mut min_swaps_for_target = u32::MAX;
 
     min_swaps_for.insert(0, 0);
 
@@ -112,29 +111,26 @@ fn solve(left: &[u64], right: &[u64]) -> Option<u64> {
             }
 
             // overshot left target
-            if value_left > target  {
+            if value_left > target {
                 return;
             }
             // overshot right target
             let value_right = total - value_left - rem_sum_left - rem_sum_right;
-            if value_right > target  {
+            if value_right > target {
                 return;
             }
 
             // can't reach left target any more
-            let max_possible_right_to_left = min(
-                (min_swaps_for_target - swaps).saturating_mul(next_value),
-                rem_sum_right,
-            );
+            let swaps_left = min_swaps_for_target - swaps;
+            let max_swap_amount = swaps_left.saturating_mul(next_value);
+
+            let max_possible_right_to_left = min(max_swap_amount, rem_sum_right);
             if value_left + rem_sum_left + max_possible_right_to_left < target {
                 return;
             }
 
             // can't reach right target any more
-            let max_possible_left_to_right = min(
-                (min_swaps_for_target - swaps).saturating_mul(next_value),
-                rem_sum_left,
-            );
+            let max_possible_left_to_right = min(max_swap_amount, rem_sum_left);
             if value_right + rem_sum_right + max_possible_left_to_right < target {
                 return;
             }
@@ -159,7 +155,7 @@ fn solve(left: &[u64], right: &[u64]) -> Option<u64> {
         std::mem::swap(&mut min_swaps_for, &mut next_min_swaps_for);
     }
 
-    if min_swaps_for_target == u64::MAX {
+    if min_swaps_for_target == u32::MAX {
         None
     } else {
         Some(min_swaps_for_target)
