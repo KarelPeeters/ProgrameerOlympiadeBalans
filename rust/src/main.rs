@@ -1,3 +1,4 @@
+use std::cmp::max;
 use std::hash::Hash;
 use std::{
     cmp::{min, Reverse},
@@ -66,7 +67,6 @@ fn solve(left: &[u64], right: &[u64]) -> Option<u64> {
     // init
     // TODO smaller keys and values for cache locality?
     let mut min_swaps_for: IntMap<u64, u64> = IntMap::default();
-    let mut next_min_swaps_for: IntMap<u64, u64> = IntMap::default();
     let mut min_swaps_for_target = u64::MAX;
 
     min_swaps_for.insert(0, 0);
@@ -79,7 +79,17 @@ fn solve(left: &[u64], right: &[u64]) -> Option<u64> {
         if min_swaps_for.is_empty() {
             break;
         }
-        assert!(next_min_swaps_for.is_empty());
+
+        // reallocate to preserve iteration speed
+        // worst case the number of entries doubles, so we add some extra margin with "*2.5"
+        let cap_target = max(32, min_swaps_for.len() * 5 / 2);
+        let mut next_min_swaps_for =
+            IntMap::with_capacity_and_hasher(cap_target, Default::default());
+        let cap_start = next_min_swaps_for.capacity();
+
+        // let vec_sparsity =  min_swaps_for.len() as f64 / min_swaps_for.keys().copied().max().unwrap() as f64;
+        // let map_sparsity = min_swaps_for.len() as f64 / min_swaps_for.capacity() as f64;
+        // println!("Iteration i={}, map_len={}, vec_sparsity={}, map_sparsity={}", i, min_swaps_for.len(), vec_sparsity, map_sparsity);
 
         let next_value = rem.get(i + 1).map_or(0, |&(_, x)| x);
         if curr_was_right {
@@ -117,7 +127,15 @@ fn solve(left: &[u64], right: &[u64]) -> Option<u64> {
             add(v + if curr_was_right { curr_value } else { 0 }, s + 1);
         }
 
-        min_swaps_for.clear();
+        // check that no reallocations happened
+        let cap_end = next_min_swaps_for.capacity();
+        assert_eq!(
+            cap_start,
+            cap_end,
+            "Expected no resize, but it did happen for len={}",
+            next_min_swaps_for.len()
+        );
+
         std::mem::swap(&mut min_swaps_for, &mut next_min_swaps_for);
     }
 
