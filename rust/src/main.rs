@@ -1,11 +1,10 @@
-use std::hash::Hash;
 use std::{
     cmp::{min, Reverse},
-    collections::{hash_map::Entry, HashMap},
     fs::File,
     io::{BufRead, BufReader},
 };
 
+use intmap::{Entry, IntMap};
 use itertools::{enumerate, Itertools};
 
 fn main() {
@@ -64,8 +63,8 @@ fn solve(left: &[u64], right: &[u64]) -> Option<u64> {
 
     // init
     // TODO smaller keys and values for cache locality?
-    let mut min_swaps_for: HashMap<u64, u64> = HashMap::default();
-    let mut next_min_swaps_for: HashMap<u64, u64> = HashMap::default();
+    let mut min_swaps_for: IntMap<u64> = IntMap::default();
+    let mut next_min_swaps_for: IntMap<u64> = IntMap::default();
     let mut min_swaps_for_target = u64::MAX;
 
     min_swaps_for.insert(0, 0);
@@ -111,7 +110,7 @@ fn solve(left: &[u64], right: &[u64]) -> Option<u64> {
             insert_if_less(&mut next_min_swaps_for, value_left, swaps);
         };
 
-        for (&v, &s) in &min_swaps_for {
+        for (&v, &s) in min_swaps_for.iter() {
             add(v + if !curr_was_right { curr_value } else { 0 }, s);
             add(v + if curr_was_right { curr_value } else { 0 }, s + 1);
         }
@@ -128,7 +127,7 @@ fn solve(left: &[u64], right: &[u64]) -> Option<u64> {
     // min_swaps_for.get(&target).copied()
 }
 
-fn insert_if_less<K: Hash + Eq, V: Ord>(map: &mut HashMap<K, V>, key: K, value: V) {
+fn insert_if_less<V: Ord>(map: &mut IntMap<V>, key: u64, value: V) {
     match map.entry(key) {
         Entry::Occupied(mut entry) => {
             let prev = entry.get_mut();
