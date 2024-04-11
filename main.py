@@ -4,6 +4,61 @@ from typing import Dict, List, Optional, Tuple
 from ortools.sat.python import cp_model
 
 
+def solve_dynamic(left, right):
+    # prepare stuff
+    total = sum(left) + sum(right)
+    if total % 2 != 0:
+        return None
+    target = total // 2
+
+    # print("Problem:")
+    # print(f"  left={left}")
+    # print(f"  right={right}")
+    # print(f"  target={target}")
+
+    rem_left = sum(left)
+    rem = [(False, x) for x in left] + [(True, x) for x in right]
+    rem.sort(key=lambda e: -e[1])  # TODO try different ways to sort
+
+    # solver step
+    min_swaps_for_value_left = {0: 0}
+    min_swaps_for_target = math.inf
+
+    for i, (curr_was_right, curr_value) in enumerate(rem):
+        # print(f"# {i}/{len(rem)}", flush=True)
+        # assert rem_left == sum(x[1] for x in rem[i:] if not x[0])
+        rem_left -= (not curr_was_right) * curr_value
+
+        next_min_swaps_for_value_left = {}
+
+        def add(value, swaps):
+            # TODO add more cuts
+
+            nonlocal min_swaps_for_target
+            if swaps >= min_swaps_for_target:
+                return
+
+            if value + rem_left == target:
+                min_swaps_for_target = min(min_swaps_for_target, swaps)
+                return
+
+            prev = next_min_swaps_for_value_left.get(value)
+            if prev is None or prev > swaps:
+                next_min_swaps_for_value_left[value] = swaps
+
+        for v, s in min_swaps_for_value_left.items():
+            add(v + (not curr_was_right) * curr_value, s)
+            add(v + curr_was_right * curr_value, s + 1)
+
+        min_swaps_for_value_left = next_min_swaps_for_value_left
+
+    assert rem_left == 0
+
+    if min_swaps_for_target == math.inf:
+        min_swaps_for_target = None
+    return min_swaps_for_target
+
+
 # TODO cache remaining swaps or best swaps?
 #    the first one probably has better collisions and a smaller key
 #    TODO: we really only need a cache to stop hitrates
@@ -185,7 +240,11 @@ def main():
         for case in range(cases):
             a = [int(x) for x in f.readline().strip().split()]
             b = [int(x) for x in f.readline().strip().split()]
-            r = solve_custom(a, b)
+
+            # r = solve_ilp(a, b)
+            # r = solve_custom(a, b)
+            r = solve_dynamic(a, b)
+
             if r is None:
                 print(case + 1, "onmogelijk")
             else:
