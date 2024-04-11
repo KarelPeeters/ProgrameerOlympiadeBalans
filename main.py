@@ -27,9 +27,13 @@ def solve_dynamic(left, right):
     rem_sum_right = sum(right)
 
     for i, (curr_was_right, curr_value) in enumerate(rem):
+        # print(f"Iteration {i}, set len {len(min_swaps_for_value_left)}")
         # print(f"# {i}/{len(rem)}", flush=True)
         # assert rem_sum_left == sum(x[1] for x in rem[i:] if not x[0])
         # assert rem_sum_right == sum(x[1] for x in rem[i:] if x[0])
+
+        if len(min_swaps_for_value_left) == 0:
+            break
 
         next_value = rem[i + 1][1] if i + 1 < len(rem) else 0
 
@@ -66,8 +70,9 @@ def solve_dynamic(left, right):
 
         min_swaps_for_value_left = next_min_swaps_for_value_left
 
-    assert rem_sum_right == 0
-    assert rem_sum_left == 0
+    if i == len(rem):
+        assert rem_sum_right == 0
+        assert rem_sum_left == 0
 
     if min_swaps_for_target == math.inf:
         min_swaps_for_target = None
