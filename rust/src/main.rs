@@ -1,5 +1,6 @@
 use std::cmp::max;
 use std::hash::Hash;
+use std::time::Instant;
 use std::{
     cmp::{min, Reverse},
     collections::hash_map::Entry,
@@ -24,6 +25,8 @@ fn main() {
     };
 
     let cases: u32 = read_line().parse().unwrap();
+    let mut total_non_last_time = 0.0;
+    let mut total_last_time = 0.0;
     for case in 0..cases {
         let left: Vec<u32> = read_line()
             .split_terminator(" ")
@@ -34,16 +37,19 @@ fn main() {
             .map(|s| s.parse().unwrap())
             .collect();
 
-        let r = solve(&left, &right);
+        let r = solve(&left, &right, &mut total_non_last_time, &mut total_last_time);
 
         match r {
             Some(r) => println!("{} {}", case + 1, r),
             None => println!("{} onmogelijk", case + 1),
         }
     }
+
+    println!("total_non_last_time={}", total_non_last_time);
+    println!("total_last_time={}", total_last_time);
 }
 
-fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
+fn solve(left: &[u32], right: &[u32], total_non_last_time: &mut f32, total_last_time: &mut f32) -> Option<u32> {
     // calculate target
     let total_left: u32 = left.iter().copied().sum();
     let total_right: u32 = right.iter().copied().sum();
@@ -75,11 +81,17 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
         let mut rem_sum_left = total_left;
         let mut rem_sum_right = total_right;
 
+        let mut max_map_size = 0;
+        let mut got_to_end = false;
+
         // solver loop
+        let start = Instant::now();
         for (i, &(curr_was_right, curr_value)) in enumerate(&rem) {
             if min_swaps_for.is_empty() {
                 break;
             }
+
+            max_map_size = max(max_map_size, min_swaps_for.len());
 
             // reallocate to preserve iteration speed
             // worst case the number of entries doubles, so we add some extra margin with "*2.5"
@@ -155,7 +167,14 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
             );
 
             std::mem::swap(&mut min_swaps_for, &mut next_min_swaps_for);
+
+            if i == rem.len() - 1 {
+                got_to_end = true;
+            }
         }
+
+        // println!("max_swaps={:?}, got_to_end={} => max_map_size={}", max_swaps, got_to_end, max_map_size);
+        // println!("took {}s", start.elapsed().as_secs_f32());
 
         if min_swaps_for_target == dummy_min_swaps_for_target {
             None
@@ -164,11 +183,22 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
         }
     };
 
+    // let min_swaps_neccessary total_left > total_right {
+
+    // }
+
     let mut max_swaps = 5;
+    let start = Instant::now();
     loop {
         max_swaps += 5;
 
+        let delta = start.elapsed().as_secs_f32();
+
+        let derp = Instant::now();
+
         if let Some(swaps) = try_solve(Some(max_swaps as u32)) {
+            *total_non_last_time += delta;
+            *total_last_time += derp.elapsed().as_secs_f32();
             return Some(swaps);
         }
 
