@@ -31,6 +31,7 @@ def solve(A, B):
     model.Minimize(sum(moves))
 
     solver = cp_model.CpSolver()
+    solver.parameters.num_search_workers = 1
     status = solver.Solve(model)
 
     if status == cp_model.INFEASIBLE:
