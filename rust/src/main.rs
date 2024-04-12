@@ -1,5 +1,7 @@
 use std::cmp::max;
 use std::hash::Hash;
+use std::time::Instant;
+use std::vec;
 use std::{
     cmp::{min, Reverse},
     collections::hash_map::Entry,
@@ -64,6 +66,43 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
     }
     rem.sort_by_key(|&(_, x)| Reverse(x));
 
+    // prepare max_swaps
+    // max_swaps_sum_ltr: (i, swaps_left) -> int
+    // let mut max_swap_amount_ltr = vec![];
+    // let mut max_swap_amount_rtl = vec![];
+
+    // for i in (0..rem.len()).rev() {
+    //     // this we can probably skip the sorts
+    //     let mut rem_left = vec![];
+    //     let mut rem_right = vec![];
+    //     for &e in &rem[i..] {
+    //         if e.0 {
+    //             rem_right.push(e.1);
+    //         } else {
+    //             rem_left.push(e.1);
+    //         }
+    //     }
+    //     rem_left.sort_by_key(|&x| Reverse(x));
+    //     rem_right.sort_by_key(|&x| Reverse(x));
+
+    //     max_swap_amount_ltr.push(partial_sums(&rem_left));
+    //     max_swap_amount_rtl.push(partial_sums(&rem_right));
+    // }
+
+    // max_swap_amount_ltr.reverse();
+    // max_swap_amount_rtl.reverse();
+
+    // println!("{:?} {:?}", left, right);
+
+    let left_sorted = left.iter().copied().sorted_by_key(|&x| Reverse(x)).collect_vec();
+    let right_sorted = right.iter().copied().sorted_by_key(|&x| Reverse(x)).collect_vec();
+    let max_swap_amounts_ltr = partial_sums(&left_sorted);
+    let max_swap_amounts_rtl = partial_sums(&right_sorted);
+
+    // println!("rem={:?}", rem);
+    // println!("max_swap_amount_ltr={:?}", max_swap_amounts_ltr);
+    // println!("max_swap_amount_rtl={:?}", max_swap_amounts_rtl);
+
     let try_solve = |max_swaps: Option<u32>| {
         // init
         let mut min_swaps_for: IntMap<u32, u32> = IntMap::default();
@@ -74,6 +113,9 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
 
         let mut rem_sum_left = total_left;
         let mut rem_sum_right = total_right;
+
+        let mut rem_left = left.len() as u32;
+        let mut rem_right = right.len() as u32;
 
         // solver loop
         for (i, &(curr_was_right, curr_value)) in enumerate(&rem) {
@@ -95,8 +137,10 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
             let next_value = rem.get(i + 1).map_or(0, |&(_, x)| x);
             if curr_was_right {
                 rem_sum_right -= curr_value;
+                rem_right -= 1;
             } else {
                 rem_sum_left -= curr_value;
+                rem_left -= 1;
             }
 
             // TODO replace with just an extra tiny for loop
@@ -123,19 +167,34 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
                 }
 
                 // can't reach left target any more
-                let swaps_left = min_swaps_for_target - swaps;
-                let max_swap_amount = swaps_left.saturating_mul(next_value);
+                // let max_swap_amount_rtl = &max_swap_amount_rtl[i + 1];
+                // let max_swap_amount_rtl = max_swap_amount_rtl[min(swaps_left as usize, max_swap_amount_rtl.len() - 1)];
+                
+                
+                let rem_swaps = min_swaps_for_target - swaps;
+                let rem_swaps_right = min(rem_swaps, rem_right);
+                let rem_swaps_left = min(rem_swaps, rem_left);
+                
+                
+                // TODO give up or fix, the current problem is that these are probably incorrect
+                // let max_possible_rtl = max_swap_amounts_rtl[rem_right] - max_swap_amounts_rtl[min(rem_swaps as usize, right.len())];
+                // let max_possible_ltr = max_swap_amounts_ltr[rem_left] - max_swap_amounts_ltr[min(rem_swaps as usize, left.len())];
 
-                let max_possible_right_to_left = min(max_swap_amount, rem_sum_right);
-                if value_left + rem_sum_left + max_possible_right_to_left < target {
-                    return;
-                }
+                // assert!(max_possible_rtl <= rem_sum_right, "i={i}, swaps={swaps}, max_possible_rtl={max_possible_rtl}, rem_sum_right={rem_sum_right}");
+                // assert!(max_possible_ltr <= rem_sum_left);
+
+                // let max_possible_rtl = min(max_swap_amount_rtl, rem_sum_right);
+                // if value_left + rem_sum_left + max_possible_rtl < target {
+                //     return;
+                // }
 
                 // can't reach right target any more
-                let max_possible_left_to_right = min(max_swap_amount, rem_sum_left);
-                if value_right + rem_sum_right + max_possible_left_to_right < target {
-                    return;
-                }
+                // let max_swap_amount_ltr = &max_swap_amount_ltr[i + 1];
+                // let max_swap_amount_ltr = max_swap_amount_ltr[min(rem_swaps as usize, max_swap_amount_ltr.len() - 1)];
+                // let max_possible_ltr = min(max_swap_amount_ltr, rem_sum_left);
+                // if value_right + rem_sum_right + max_possible_ltr < target {
+                //     return;
+                // }
 
                 insert_if_less(&mut next_min_swaps_for, value_left, swaps);
             };
@@ -198,4 +257,15 @@ fn insert_if_less<K: Hash + nohash::IsEnabled + Eq, V: Ord>(
             entry.insert(value);
         }
     }
+}
+
+fn partial_sums(v: &[u32]) -> Vec<u32> {
+    let mut c = 0;
+
+    let mut r = vec![c];
+    for &x in v {
+        c += x;
+        r.push(c);
+    }
+    r
 }
