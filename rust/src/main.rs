@@ -23,7 +23,7 @@ fn main() {
 
     let cases: u32 = read_line().parse().unwrap();
     let mut result = String::new();
-    
+
     for case in 0..cases {
         let left: Vec<u32> = read_line()
             .split_terminator(" ")
@@ -41,7 +41,7 @@ fn main() {
             None => writeln!(&mut result, "{} onmogelijk", case + 1).unwrap(),
         }
     }
-    
+
     print!("{}", result);
     assert!(input_lines.next().is_none());
 }
@@ -157,7 +157,7 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
                 next_min_swaps_for.len()
             );
 
-            std::mem::swap(&mut min_swaps_for, &mut next_min_swaps_for);
+            min_swaps_for = next_min_swaps_for;
         }
 
         if min_swaps_for_target == dummy_min_swaps_for_target {
