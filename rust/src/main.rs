@@ -1,3 +1,5 @@
+#![feature(portable_simd)]
+
 use std::{
     fs::File,
     io::{BufRead, BufReader},
