@@ -1,12 +1,10 @@
 use std::{
     cmp::{min, Reverse},
-    collections::hash_map::Entry,
-    fs::File,
-    io::{BufRead, BufReader},
+    collections::hash_map::Entry
 };
 use std::cmp::max;
-use std::hash::Hash;
 use std::fmt::Write;
+use std::hash::Hash;
 
 use itertools::{enumerate, Itertools};
 use nohash::IntMap;
@@ -16,12 +14,11 @@ fn main() {
     assert_eq!(args.len(), 2, "Expected single input argument");
 
     let input_path = &args[1];
-    let mut input = BufReader::new(File::open(input_path).unwrap());
+    let input = std::fs::read_to_string(input_path).unwrap();
+    let mut input_lines = input.lines();
 
     let mut read_line = || {
-        let mut s = String::new();
-        input.read_line(&mut s).unwrap();
-        s.trim().to_owned()
+        input_lines.next().unwrap().trim()
     };
 
     let cases: u32 = read_line().parse().unwrap();
@@ -46,6 +43,7 @@ fn main() {
     }
     
     print!("{}", result);
+    assert!(input_lines.next().is_none());
 }
 
 fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
