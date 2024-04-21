@@ -1,13 +1,14 @@
-use std::{
-    cmp::{min, Reverse},
-    collections::hash_map::Entry
-};
+use std::cmp::{min, Reverse};
 use std::cmp::max;
 use std::fmt::Write;
 use std::hash::Hash;
 
+use indexmap::IndexMap;
+use indexmap::map::Entry;
 use itertools::{enumerate, Itertools};
-use nohash::IntMap;
+use nohash::BuildNoHashHasher;
+
+type Map<K, V> = IndexMap<K, V, BuildNoHashHasher<K>>;
 
 fn main() {
     let args = std::env::args().collect_vec();
@@ -69,7 +70,7 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
 
     let try_solve = |max_swaps: Option<u32>| {
         // init
-        let mut min_swaps_for: IntMap<u32, u32> = IntMap::default();
+        let mut min_swaps_for: Map<u32, u32> = Map::with_capacity_and_hasher(32, Default::default());
         let dummy_min_swaps_for_target = max_swaps.map_or(u32::MAX, |m| m + 1);
         let mut min_swaps_for_target = dummy_min_swaps_for_target;
 
@@ -88,7 +89,7 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
             //   worst case the number of entries doubles, and in practice that turns out to be enough capacity
             let cap_target = max(32, min_swaps_for.len() * 2);
             let mut next_min_swaps_for =
-                IntMap::with_capacity_and_hasher(cap_target, Default::default());
+                Map::with_capacity_and_hasher(cap_target, Default::default());
             let cap_start = next_min_swaps_for.capacity();
 
             // let vec_sparsity =  min_swaps_for.len() as f64 / min_swaps_for.keys().copied().max().unwrap() as f64;
@@ -127,7 +128,7 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
                 let value_right = (total - rem_sum_left - rem_sum_right) - value_left;
                 let max_possible_left_to_right = min(max_swap_amount, rem_sum_left);
                 let max_possible_right = value_right + rem_sum_right + max_possible_left_to_right;
-                
+
                 if max_possible_left < target || max_possible_right < target {
                     return;
                 }
@@ -178,7 +179,7 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
 }
 
 fn insert_if_less<K: Hash + nohash::IsEnabled + Eq, V: Ord>(
-    map: &mut IntMap<K, V>,
+    map: &mut Map<K, V>,
     key: K,
     value: V,
 ) {
