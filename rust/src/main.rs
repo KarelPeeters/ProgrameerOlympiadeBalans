@@ -177,7 +177,7 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
     // min_swaps_for.get(&target).copied()
 }
 
-fn insert_if_less<K: Hash + nohash::IsEnabled + Eq, V: Ord>(
+fn insert_if_less<K: Hash + nohash::IsEnabled + Eq, V: Ord + Copy>(
     map: &mut IntMap<K, V>,
     key: K,
     value: V,
@@ -185,9 +185,7 @@ fn insert_if_less<K: Hash + nohash::IsEnabled + Eq, V: Ord>(
     match map.entry(key) {
         Entry::Occupied(mut entry) => {
             let prev = entry.get_mut();
-            if &*prev > &value {
-                *prev = value;
-            }
+            *prev = min(*prev, value);
         }
         Entry::Vacant(entry) => {
             entry.insert(value);
