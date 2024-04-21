@@ -115,28 +115,20 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
                     return;
                 }
 
-                // overshot left target
-                if value_left > target {
-                    return;
-                }
-                // overshot right target
-                let value_right = total - value_left - rem_sum_left - rem_sum_right;
-                if value_right > target {
-                    return;
-                }
-
-                // can't reach left target any more
+                // check target reachability
                 let swaps_left = min_swaps_for_target - swaps;
                 let max_swap_amount = swaps_left.saturating_mul(next_value);
 
+                //   left
                 let max_possible_right_to_left = min(max_swap_amount, rem_sum_right);
-                if value_left + rem_sum_left + max_possible_right_to_left < target {
-                    return;
-                }
+                let max_possible_left = value_left + rem_sum_left + max_possible_right_to_left;
 
-                // can't reach right target any more
+                //   right
+                let value_right = (total - rem_sum_left - rem_sum_right) - value_left;
                 let max_possible_left_to_right = min(max_swap_amount, rem_sum_left);
-                if value_right + rem_sum_right + max_possible_left_to_right < target {
+                let max_possible_right = value_right + rem_sum_right + max_possible_left_to_right;
+                
+                if max_possible_left < target || max_possible_right < target {
                     return;
                 }
 
