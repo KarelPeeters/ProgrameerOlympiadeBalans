@@ -6,6 +6,7 @@ use std::{
 };
 use std::cmp::max;
 use std::hash::Hash;
+use std::fmt::Write;
 
 use itertools::{enumerate, Itertools};
 use nohash::IntMap;
@@ -24,6 +25,8 @@ fn main() {
     };
 
     let cases: u32 = read_line().parse().unwrap();
+    let mut result = String::new();
+    
     for case in 0..cases {
         let left: Vec<u32> = read_line()
             .split_terminator(" ")
@@ -37,10 +40,12 @@ fn main() {
         let r = solve(&left, &right);
 
         match r {
-            Some(r) => println!("{} {}", case + 1, r),
-            None => println!("{} onmogelijk", case + 1),
+            Some(r) => writeln!(&mut result, "{} {}", case + 1, r).unwrap(),
+            None => writeln!(&mut result, "{} onmogelijk", case + 1).unwrap(),
         }
     }
+    
+    print!("{}", result);
 }
 
 fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
