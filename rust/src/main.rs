@@ -1,11 +1,11 @@
-use std::cmp::max;
-use std::hash::Hash;
 use std::{
     cmp::{min, Reverse},
     collections::hash_map::Entry,
     fs::File,
     io::{BufRead, BufReader},
 };
+use std::cmp::max;
+use std::hash::Hash;
 
 use itertools::{enumerate, Itertools};
 use nohash::IntMap;
@@ -82,8 +82,8 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
             }
 
             // reallocate to preserve iteration speed
-            // worst case the number of entries doubles, so we add some extra margin with "*2.5"
-            let cap_target = max(32, min_swaps_for.len() * 5 / 2);
+            //   worst case the number of entries doubles, and in practice that turns out to be enough capacity
+            let cap_target = max(32, min_swaps_for.len() * 2);
             let mut next_min_swaps_for =
                 IntMap::with_capacity_and_hasher(cap_target, Default::default());
             let cap_start = next_min_swaps_for.capacity();
