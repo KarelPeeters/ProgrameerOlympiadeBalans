@@ -58,7 +58,7 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
     // TODO max swap count that increases over time
     // TODO implicit max swaps, if value reachable through lower sets don't count, and don't bump is empty
     // TODO use highest set bit for bitset len
-    // let max_swaps = 100;
+    let max_swaps = 100;
 
     // TODO leak memory instead of dropping
 
@@ -75,12 +75,17 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
 
     // left
     for &x in left {
-        let mut next = vec![BitSet::new(prev[0].len + x as usize); prev.len() + 1];
+        let next_max_swaps = min(max_swaps, prev.len());
+        let mut next = vec![BitSet::new(prev[0].len + x as usize); next_max_swaps + 1];
+
         for (prev_steps, prev_reach) in enumerate(&prev) {
             // no swap (add to left value)
             next[prev_steps].or_assign_shift_up(prev_reach, x);
-            // swap (add nothing to left value)
-            next[prev_steps + 1].or_assign_shift_up(prev_reach, 0);
+
+            if prev_steps + 1 <= next_max_swaps {
+                // swap (add nothing to left value)
+                next[prev_steps + 1].or_assign_shift_up(prev_reach, 0);
+            }
         }
         prev = next;
 
@@ -92,12 +97,17 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
 
     // right
     for &x in right {
-        let mut next = vec![BitSet::new(prev[0].len + x as usize); prev.len() + 1];
+        let next_max_swaps = min(max_swaps, prev.len());
+        let mut next = vec![BitSet::new(prev[0].len + x as usize); next_max_swaps + 1];
+
         for (prev_steps, prev_reach) in enumerate(&prev) {
             // no swap (add nothing to left value)
             next[prev_steps].or_assign_shift_up(prev_reach, 0);
-            // swap (add to left value)
-            next[prev_steps + 1].or_assign_shift_up(prev_reach, x);
+
+            if prev_steps + 1 <= next_max_swaps {
+                // swap (add to left value)
+                next[prev_steps + 1].or_assign_shift_up(prev_reach, x);
+            }
         }
         prev = next;
 
