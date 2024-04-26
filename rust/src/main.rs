@@ -1,13 +1,7 @@
-use std::{
-    cmp::{min, Reverse},
-    collections::hash_map::Entry
-};
-use std::cmp::max;
+use std::cmp::{max, min, Ordering, Reverse};
 use std::fmt::Write;
-use std::hash::Hash;
 
 use itertools::{enumerate, Itertools};
-use nohash::IntMap;
 
 fn main() {
     let args = std::env::args().collect_vec();
@@ -69,11 +63,11 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
 
     let try_solve = |max_swaps: Option<u32>| {
         // init
-        let mut min_swaps_for: IntMap<u32, u32> = IntMap::default();
+        let mut min_swaps_for: Vec<(u32, u32)> = vec![];
         let dummy_min_swaps_for_target = max_swaps.map_or(u32::MAX, |m| m + 1);
         let mut min_swaps_for_target = dummy_min_swaps_for_target;
 
-        min_swaps_for.insert(0, 0);
+        min_swaps_for.push((0, 0));
 
         let mut rem_sum_left = total_left;
         let mut rem_sum_right = total_right;
@@ -86,9 +80,7 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
 
             // reallocate to preserve iteration speed
             //   worst case the number of entries doubles, and in practice that turns out to be enough capacity
-            let cap_target = max(32, min_swaps_for.len() * 2);
-            let mut next_min_swaps_for =
-                IntMap::with_capacity_and_hasher(cap_target, Default::default());
+            let mut next_min_swaps_for = Vec::with_capacity(min_swaps_for.len() * 2);
             let cap_start = next_min_swaps_for.capacity();
 
             // let vec_sparsity =  min_swaps_for.len() as f64 / min_swaps_for.keys().copied().max().unwrap() as f64;
@@ -104,6 +96,10 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
 
             // TODO replace with just an extra tiny for loop
             let mut add = |value_left, swaps| {
+                // if let Some((prev_value, _)) = next_min_swaps_for.last().copied() {
+                //     assert!(prev_value < value_left);
+                // }
+
                 // too many steps used?
                 if swaps >= min_swaps_for_target {
                     return;
@@ -132,12 +128,52 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
                     return;
                 }
 
-                insert_if_less(&mut next_min_swaps_for, value_left, swaps);
+                next_min_swaps_for.push((value_left, swaps));
             };
 
-            for (&v, &s) in &min_swaps_for {
-                add(v + if !curr_was_right { curr_value } else { 0 }, s);
-                add(v + if curr_was_right { curr_value } else { 0 }, s + 1);
+            let mut iter_a = min_swaps_for.iter();
+            let mut iter_b = min_swaps_for.iter();
+
+            let mut curr_a = iter_a.next().copied();
+            let mut curr_b = iter_b.next().copied();
+
+            // merge two implicit arrays
+            while let (Some((prev_a, swaps_a)), Some((prev_b, swaps_b))) = (curr_a, curr_b) {
+                let next_a = prev_a + if !curr_was_right { curr_value } else { 0 };
+                let swaps_a = swaps_a;
+
+                let next_b = prev_b + if curr_was_right { curr_value } else { 0 };
+                let swaps_b = swaps_b + 1;
+
+                match next_a.cmp(&next_b) {
+                    Ordering::Less => {
+                        add(next_a, swaps_a);
+                        curr_a = iter_a.next().copied();
+                    }
+                    Ordering::Greater => {
+                        add(next_b, swaps_b);
+                        curr_b = iter_b.next().copied();
+                    }
+                    Ordering::Equal => {
+                        add(next_a, min(swaps_a, swaps_b));
+                        curr_a = iter_a.next().copied();
+                        curr_b = iter_b.next().copied();
+                    }
+                }
+            }
+
+            // push remaining items
+            while let Some((prev_a, swaps_a)) = curr_a {
+                let next_a = prev_a + if !curr_was_right { curr_value } else { 0 };
+                let swaps_a = swaps_a;
+                add(next_a, swaps_a);
+                curr_a = iter_a.next().copied();
+            }
+            while let Some((prev_b, swaps_b)) = curr_b {
+                let next_b = prev_b + if curr_was_right { curr_value } else { 0 };
+                let swaps_b = swaps_b + 1;
+                add(next_b, swaps_b);
+                curr_b = iter_b.next().copied();
             }
 
             // check that no reallocations happened
@@ -175,20 +211,4 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
     None
 
     // min_swaps_for.get(&target).copied()
-}
-
-fn insert_if_less<K: Hash + nohash::IsEnabled + Eq, V: Ord + Copy>(
-    map: &mut IntMap<K, V>,
-    key: K,
-    value: V,
-) {
-    match map.entry(key) {
-        Entry::Occupied(mut entry) => {
-            let prev = entry.get_mut();
-            *prev = min(*prev, value);
-        }
-        Entry::Vacant(entry) => {
-            entry.insert(value);
-        }
-    }
 }
