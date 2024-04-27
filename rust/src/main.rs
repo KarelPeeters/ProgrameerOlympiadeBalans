@@ -94,7 +94,6 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
                 rem_sum_left -= curr_value;
             }
 
-            // TODO replace with just an extra tiny for loop
             let mut add = |value_left, swaps| {
                 // if let Some((prev_value, _)) = next_min_swaps_for.last().copied() {
                 //     assert!(prev_value < value_left);
@@ -131,49 +130,45 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
                 next_min_swaps_for.push((value_left, swaps));
             };
 
-            let mut iter_a = min_swaps_for.iter();
-            let mut iter_b = min_swaps_for.iter();
+            let mut a = 0;
+            let mut b = 0;
 
-            let mut curr_a = iter_a.next().copied();
-            let mut curr_b = iter_b.next().copied();
-
-            // merge two implicit arrays
-            while let (Some((prev_a, swaps_a)), Some((prev_b, swaps_b))) = (curr_a, curr_b) {
+            while let (Some((prev_a, prev_swaps_a)), Some((prev_b, prev_swaps_b))) = (min_swaps_for.get(a).copied(), min_swaps_for.get(b).copied()) {
                 let next_a = prev_a + if !curr_was_right { curr_value } else { 0 };
-                let swaps_a = swaps_a;
+                let swaps_a = prev_swaps_a;
 
                 let next_b = prev_b + if curr_was_right { curr_value } else { 0 };
-                let swaps_b = swaps_b + 1;
+                let swaps_b = prev_swaps_b + 1;
 
                 match next_a.cmp(&next_b) {
                     Ordering::Less => {
                         add(next_a, swaps_a);
-                        curr_a = iter_a.next().copied();
+                        a += 1;
                     }
                     Ordering::Greater => {
                         add(next_b, swaps_b);
-                        curr_b = iter_b.next().copied();
+                        b += 1;
                     }
                     Ordering::Equal => {
                         add(next_a, min(swaps_a, swaps_b));
-                        curr_a = iter_a.next().copied();
-                        curr_b = iter_b.next().copied();
+                        a += 1;
+                        b += 1;
                     }
                 }
             }
 
             // push remaining items
-            while let Some((prev_a, swaps_a)) = curr_a {
+            while let Some((prev_a, swaps_a)) = min_swaps_for.get(a).copied() {
                 let next_a = prev_a + if !curr_was_right { curr_value } else { 0 };
                 let swaps_a = swaps_a;
                 add(next_a, swaps_a);
-                curr_a = iter_a.next().copied();
+                a += 1;
             }
-            while let Some((prev_b, swaps_b)) = curr_b {
+            while let Some((prev_b, swaps_b)) = min_swaps_for.get(b).copied() {
                 let next_b = prev_b + if curr_was_right { curr_value } else { 0 };
                 let swaps_b = swaps_b + 1;
                 add(next_b, swaps_b);
-                curr_b = iter_b.next().copied();
+                b += 1;
             }
 
             // check that no reallocations happened
