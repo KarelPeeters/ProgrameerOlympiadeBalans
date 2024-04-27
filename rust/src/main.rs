@@ -1,5 +1,9 @@
+#![feature(portable_simd)]
+
 use std::cmp::{max, min, Ordering, Reverse};
 use std::fmt::Write;
+use std::simd::cmp::SimdOrd;
+use std::simd::Simd;
 
 use itertools::{enumerate, Itertools};
 
@@ -122,7 +126,7 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
                 let value_right = (total - rem_sum_left - rem_sum_right) - value_left;
                 let max_possible_left_to_right = min(max_swap_amount, rem_sum_left);
                 let max_possible_right = value_right + rem_sum_right + max_possible_left_to_right;
-                
+
                 if max_possible_left < target || max_possible_right < target {
                     return;
                 }
@@ -133,6 +137,39 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
             let mut a = 0;
             let mut b = 0;
 
+            while a + SIMD_WIDTH < min_swaps_for.len() && b + SIMD_WIDTH < min_swaps_for.len() {
+                let mut a_keys = Simd::default();
+                let mut a_values = Simd::default();
+                let mut b_keys = Simd::default();
+                let mut b_values = Simd::default();
+
+                for i in 0..SIMD_WIDTH {
+                    a_keys[i] = min_swaps_for[a + i].0;
+                    a_values[i] = min_swaps_for[a + i].1;
+                    b_keys[i] = min_swaps_for[b + i].0;
+                    b_values[i] = min_swaps_for[b + i].1;
+                }
+
+                a_keys += Simd::splat(if !curr_was_right { curr_value } else { 0 });
+                b_keys += Simd::splat(if curr_was_right { curr_value } else { 0 });
+                b_values += Simd::splat(1);
+
+                // TODO update simd values based on curr and swap
+
+                let StepResult { keys, values, inc_a, inc_b } = simd_step(a_keys, a_values, b_keys, b_values);
+                a += inc_a as usize;
+                b += inc_b as usize;
+
+                let keys = keys.to_array();
+                let values = values.to_array();
+
+                // TODO simd-based add filtering?
+                for i in 0..SIMD_WIDTH {
+                    add(keys[i], values[i]);
+                }
+            }
+
+            // handle non-simd remainder
             while let (Some((prev_a, prev_swaps_a)), Some((prev_b, prev_swaps_b))) = (min_swaps_for.get(a).copied(), min_swaps_for.get(b).copied()) {
                 let next_a = prev_a + if !curr_was_right { curr_value } else { 0 };
                 let swaps_a = prev_swaps_a;
@@ -206,4 +243,121 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
     None
 
     // min_swaps_for.get(&target).copied()
+}
+
+const SIMD_WIDTH: usize = 4;
+
+type SimdVec = Simd<u32, SIMD_WIDTH>;
+
+#[derive(Debug, Eq, PartialEq)]
+struct StepResult {
+    keys: SimdVec,
+    values: SimdVec,
+    inc_a: u8,
+    inc_b: u8,
+}
+
+fn simd_step(a_keys: SimdVec, a_values: SimdVec, b_keys: SimdVec, b_values: SimdVec) -> StepResult {
+    let mut r = simd_step_slow(a_keys, a_values, b_keys, b_values);
+    
+    let m = a_keys.simd_min(b_keys);
+
+    r
+}
+
+fn simd_step_slow(a_keys: SimdVec, a_values: SimdVec, b_keys: SimdVec, b_values: SimdVec) -> StepResult {
+    let a_keys: [u32; SIMD_WIDTH] = a_keys.to_array();
+    let a_values: [u32; SIMD_WIDTH] = a_values.to_array();
+    let b_keys: [u32; SIMD_WIDTH] = b_keys.to_array();
+    let b_values: [u32; SIMD_WIDTH] = b_values.to_array();
+
+    let mut r_keys = [0; SIMD_WIDTH];
+    let mut r_values = [0; SIMD_WIDTH];
+    let mut a = 0;
+    let mut b = 0;
+
+    for i in 0..SIMD_WIDTH {
+        let (k, v) = match a_keys[a].cmp(&b_keys[b]) {
+            Ordering::Less => {
+                a += 1;
+                (a_keys[a - 1], a_values[a - 1])
+            }
+            Ordering::Greater => {
+                b += 1;
+                (b_keys[b - 1], b_values[b - 1])
+            }
+            Ordering::Equal => {
+                a += 1;
+                b += 1;
+                (a_keys[a - 1], min(a_values[a - 1], b_values[b - 1]))
+            }
+        };
+        r_keys[i] = k;
+        r_values[i] = v;
+    }
+
+    StepResult {
+        keys: SimdVec::from_array(r_keys),
+        values: SimdVec::from_array(r_values),
+        inc_a: a as u8,
+        inc_b: b as u8,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::simd::Simd;
+
+    use rand::{Rng, SeedableRng};
+    use rand::rngs::SmallRng;
+
+    use crate::{simd_step, simd_step_slow, SIMD_WIDTH};
+
+    #[test]
+    fn random() {
+        let mut rng = SmallRng::seed_from_u64(0);
+
+        let mut n = 0;
+
+        loop {
+            let mut a_keys = Simd::from_array(rng.gen());
+            let mut a_values = Simd::from_array(rng.gen());
+            let mut b_keys = Simd::from_array(rng.gen());
+            let mut b_values = Simd::from_array(rng.gen());
+
+            // keep values low for initial debugging
+            a_keys %= Simd::splat(16);
+            a_values %= Simd::splat(16);
+            b_keys %= Simd::splat(16);
+            b_values %= Simd::splat(16);
+
+            // a and b must each be strictly increasing (this also implies no duplicates)
+            let mut skip = false;
+            for i in 0..SIMD_WIDTH - 1 {
+                if a_keys[i] >= a_keys[i + 1] || b_keys[i] >= b_keys[i + 1] {
+                    skip = true;
+                }
+            }
+            if skip {
+                continue;
+            }
+
+            println!("a_keys={:?}", a_keys);
+            println!("a_values={:?}", a_values);
+            println!("b_keys={:?}", b_keys);
+            println!("b_values={:?}", b_values);
+
+            let result_slow = simd_step_slow(a_keys, a_values, b_keys, b_values);
+            let result = simd_step(a_keys, a_values, b_keys, b_values);
+
+            println!("result={:?}", result);
+
+            assert_eq!(result_slow, result);
+
+            n += 1;
+            if n >= 32 {
+                break
+            }
+        }
+    }
 }

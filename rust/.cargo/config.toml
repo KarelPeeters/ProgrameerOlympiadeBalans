@@ -1,3 +1,2 @@
-# inside .cargo/config.toml, set target CPU to native
 [build]
 rustflags = ["-Ctarget-cpu=native"]
