@@ -62,6 +62,8 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
     rem.sort_by_key(|&(_, x)| Reverse(x));
 
     let try_solve = |max_swaps: Option<u32>| {
+        // println!("max_swaps={:?}", max_swaps);
+
         // init
         let mut min_swaps_for: Vec<(u32, u32)> = vec![];
         let dummy_min_swaps_for_target = max_swaps.map_or(u32::MAX, |m| m + 1);
@@ -77,6 +79,14 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
             if min_swaps_for.is_empty() {
                 break;
             }
+
+            // println!(
+            //     "i={}, solution={:?}, vec_density={:?}/{:?}",
+            //     i,
+            //     if min_swaps_for_target < dummy_min_swaps_for_target { Some(min_swaps_for_target) } else { None },
+            //     min_swaps_for.len(),
+            //     min_swaps_for.last().map(|x| x.0)
+            // );
 
             // reallocate to preserve iteration speed
             //   worst case the number of entries doubles, and in practice that turns out to be enough capacity
