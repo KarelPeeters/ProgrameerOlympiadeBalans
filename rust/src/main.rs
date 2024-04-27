@@ -78,6 +78,8 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
                 break;
             }
 
+            // println!("iter={}: vec_len={}, best={}", i, min_swaps_for.len(), min_swaps_for_target);
+
             // reallocate to preserve iteration speed
             //   worst case the number of entries doubles, and in practice that turns out to be enough capacity
             let mut next_min_swaps_for = Vec::with_capacity(min_swaps_for.len() * 2);
@@ -134,42 +136,104 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
             let mut b = 0;
 
             while let (Some((prev_a, prev_swaps_a)), Some((prev_b, prev_swaps_b))) = (min_swaps_for.get(a).copied(), min_swaps_for.get(b).copied()) {
-                let next_a = prev_a + if !curr_was_right { curr_value } else { 0 };
-                let swaps_a = prev_swaps_a;
+                let mut next_a = prev_a + if !curr_was_right { curr_value } else { 0 };
+                let mut swaps_a = prev_swaps_a;
 
-                let next_b = prev_b + if curr_was_right { curr_value } else { 0 };
-                let swaps_b = prev_swaps_b + 1;
+                let mut next_b = prev_b + if curr_was_right { curr_value } else { 0 };
+                let mut swaps_b = prev_swaps_b + 1;
 
                 match next_a.cmp(&next_b) {
                     Ordering::Less => {
-                        add(next_a, swaps_a);
-                        a += 1;
+                        // print!("a");
+
+                        loop {
+                            add(next_a, swaps_a);
+                            a += 1;
+
+                            let (prev_a, prev_swaps_a) = match min_swaps_for.get(a) {
+                                None => break,
+                                Some(&r) => r,
+                            };
+
+                            next_a = prev_a + if !curr_was_right { curr_value } else { 0 };
+                            swaps_a = prev_swaps_a;
+
+                            if next_a >= next_b {
+                                break;
+                            }
+                            // print!("A");
+                        }
                     }
                     Ordering::Greater => {
-                        add(next_b, swaps_b);
-                        b += 1;
+                        // print!("b");
+                        loop {
+                            add(next_b, swaps_b);
+                            b += 1;
+
+                            let (prev_b, prev_swaps_b) = match min_swaps_for.get(b) {
+                                None => break,
+                                Some(&r) => r,
+                            };
+
+                            next_b = prev_b + if curr_was_right { curr_value } else { 0 };
+                            swaps_b = prev_swaps_b + 1;
+
+                            if next_a <= next_b {
+                                break;
+                            }
+                            // print!("B");
+                        }
                     }
                     Ordering::Equal => {
-                        add(next_a, min(swaps_a, swaps_b));
-                        a += 1;
-                        b += 1;
+                        // print!("m");
+                        loop {
+                            add(next_a, min(swaps_a, swaps_b));
+                            a += 1;
+                            b += 1;
+
+                            let (prev_a, prev_swaps_a) = match min_swaps_for.get(a) {
+                                None => break,
+                                Some(&r) => r,
+                            };
+                            let (prev_b, prev_swaps_b) = match min_swaps_for.get(b) {
+                                None => break,
+                                Some(&r) => r,
+                            };
+
+                            next_a = prev_a + if !curr_was_right { curr_value } else { 0 };
+                            swaps_a = prev_swaps_a;
+
+                            next_b = prev_b + if curr_was_right { curr_value } else { 0 };
+                            swaps_b = prev_swaps_b + 1;
+
+                            if next_a != next_b {
+                                break;
+                            }
+                            // print!("M");
+                        }
                     }
                 }
             }
 
+            // print!("|");
+
             // push remaining items
             while let Some((prev_a, swaps_a)) = min_swaps_for.get(a).copied() {
+                // print!("a");
                 let next_a = prev_a + if !curr_was_right { curr_value } else { 0 };
                 let swaps_a = swaps_a;
                 add(next_a, swaps_a);
                 a += 1;
             }
             while let Some((prev_b, swaps_b)) = min_swaps_for.get(b).copied() {
+                // print!("b");
                 let next_b = prev_b + if curr_was_right { curr_value } else { 0 };
                 let swaps_b = swaps_b + 1;
                 add(next_b, swaps_b);
                 b += 1;
             }
+
+            // println!();
 
             // check that no reallocations happened
             let cap_end = next_min_swaps_for.capacity();
