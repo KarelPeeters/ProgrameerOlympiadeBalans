@@ -92,7 +92,7 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
                 break;
             }
 
-            assert!(next_min_swaps_for.is_empty());
+            debug_assert!(next_min_swaps_for.is_empty());
             if next_min_swaps_for.capacity() < 2 * min_swaps_for.len() + 1 {
                 next_min_swaps_for.reserve(2 * min_swaps_for.len() + 1 - next_min_swaps_for.capacity());
             }
@@ -165,15 +165,11 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
                     if next_b == next_a {
                         let swaps_a = min_swaps_for[a].1;
                         let swaps_b = min_swaps_for[b].1 + 1;
-                        if add(next_a, min(swaps_a, swaps_b), true, true) {
-                            return Some(max_swaps);
-                        }
+                        add(next_a, min(swaps_a, swaps_b), true, true);
                         b += 1;
                     } else {
                         let swaps_a = min_swaps_for[a].1;
-                        if add(next_a, swaps_a, true, false) {
-                            return Some(max_swaps);
-                        }
+                        add(next_a, swaps_a, true, false);
                     }
                     a += 1;
                 }
@@ -193,18 +189,14 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
                     let mut next_b = min_swaps_for[b].0 + curr_value;
                     while next_b < next_a {
                         let swaps_b = min_swaps_for[b].1;
-                        if add(next_b, swaps_b, true, false) {
-                            return Some(max_swaps);
-                        }
+                        add(next_b, swaps_b, true, false);
                         b += 1;
                         next_b = min_swaps_for[b].0 + curr_value;
                     }
                     if next_b == next_a {
                         let swaps_a = min_swaps_for[a].1 + 1;
                         let swaps_b = min_swaps_for[b].1;
-                        if add(next_a, min(swaps_a, swaps_b), true, true) {
-                            return Some(max_swaps);
-                        }
+                        add(next_a, min(swaps_a, swaps_b), true, true);
                         b += 1;
                     } else {
                         let swaps_a = min_swaps_for[a].1 + 1;
@@ -217,16 +209,14 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
                 while b < min_swaps_for.len() {
                     let next_b = min_swaps_for[b].0 + curr_value;
                     let swaps_b = min_swaps_for[b].1;
-                    if add(next_b, swaps_b, true, false) {
-                        return Some(max_swaps);
-                    }
+                    add(next_b, swaps_b, true, false);
                     b += 1;
                 }
             }
 
             // check that no reallocations happened
             let cap_end = next_min_swaps_for.capacity();
-            assert_eq!(
+            debug_assert_eq!(
                 cap_start,
                 cap_end,
                 "Expected no resize, but it did happen for len={}",
