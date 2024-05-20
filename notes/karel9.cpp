@@ -133,13 +133,11 @@ int32_t solve(const std::vector<int32_t>& left, const std::vector<int32_t>& righ
                     if (next_b == next_a) {
                         int32_t swaps_a = min_swaps_for[a].swaps;
                         int32_t swaps_b = min_swaps_for[b].swaps + 1;
-                        if(add(next_a, std::min(swaps_a, swaps_b), true, true))
-                            return max_swaps;
+                        add(next_a, std::min(swaps_a, swaps_b), true, true);
                         ++b;
                     } else {
                         int32_t swaps_a = min_swaps_for[a].swaps;
-                        if(add(next_a, swaps_a, true, false))
-                            return max_swaps;
+                        add(next_a, swaps_a, true, false);
                     }
                 }
                 for (; b < min_swaps_for_size; ++b) {
@@ -155,16 +153,14 @@ int32_t solve(const std::vector<int32_t>& left, const std::vector<int32_t>& righ
                     int32_t next_b = min_swaps_for[b].value_left + curr_value;
                     while (next_b < next_a) {
                         int32_t swaps_b = min_swaps_for[b].swaps;
-                        if(add(next_b, swaps_b, true, false))
-                            return max_swaps;
+                        add(next_b, swaps_b, true, false);
                         ++b;
                         next_b = min_swaps_for[b].value_left + curr_value;
                     }
                     if (next_b == next_a) {
                         int32_t swaps_a = min_swaps_for[a].swaps + 1;
                         int32_t swaps_b = min_swaps_for[b].swaps;
-                        if(add(next_a, std::min(swaps_a, swaps_b), true, true))
-                            return max_swaps;
+                        add(next_a, std::min(swaps_a, swaps_b), true, true);
                         ++b;
                     } else {
                         int32_t swaps_a = min_swaps_for[a].swaps + 1;
@@ -175,8 +171,7 @@ int32_t solve(const std::vector<int32_t>& left, const std::vector<int32_t>& righ
                 for (; b < min_swaps_for_size; ++b) {
                     int32_t next_b = min_swaps_for[b].value_left + curr_value;
                     int32_t swaps_b = min_swaps_for[b].swaps;
-                    if(add(next_b, swaps_b, true, false))
-                        return max_swaps;
+                    add(next_b, swaps_b, true, false);
                 }
             }
 
