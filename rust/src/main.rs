@@ -107,14 +107,14 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
 
             let baseline_left_to_right = max_possible_left_to_right[min(done_left as usize, max_possible_left_to_right.len() - 1)];
             let baseline_right_to_left = max_possible_right_to_left[min(done_right as usize, max_possible_right_to_left.len() - 1)];
-            let relative_target = target - rem_sum_left;
+            let relative_target = target as i32 - rem_sum_left as i32;
 
             let mut add = |value_left, swaps, skip1: bool, skip2: bool| -> bool {
                 // reached target?
-                if !skip1 && value_left == relative_target {
+                if !skip1 && value_left as i32 == relative_target {
                     return true;
                 }
-                debug_assert!(value_left != relative_target);
+                debug_assert!(value_left as i32 != relative_target);
 
                 // too many swaps used?
                 if !skip1 && swaps >= max_swaps {
@@ -128,16 +128,17 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
                     max_possible_right_to_left[min((done_right + swaps_remaining) as usize, max_possible_right_to_left.len() - 1)]
                         - baseline_right_to_left
                 );
-                let min_possible_left = value_left - (
-                    max_possible_left_to_right[min((done_right + swaps_remaining) as usize, max_possible_left_to_right.len() - 1)]
+
+                let min_possible_left = value_left as i32 - (
+                    max_possible_left_to_right[min((done_left + swaps_remaining) as usize, max_possible_left_to_right.len() - 1)]
                         - baseline_left_to_right
-                );
+                ) as i32;
 
                 // reachable
-                if !skip2 && (max_possible_left < relative_target || min_possible_left > relative_target) {
+                if !skip2 && ((max_possible_left as i32) < relative_target || min_possible_left > relative_target) {
                     return false;
                 }
-                debug_assert!(!(max_possible_left < relative_target || min_possible_left > relative_target));
+                debug_assert!(!((max_possible_left as i32) < relative_target || min_possible_left > relative_target));
 
                 // push solution
                 next_min_swaps_for.push((value_left, swaps));
