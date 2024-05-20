@@ -26,6 +26,8 @@ inline bool cmp(const Pair1& a, const Pair1& b) {
 int32_t solve(const std::vector<int32_t>& left, const std::vector<int32_t>& right) {
     int32_t total_left = accumulate(left.begin(), left.end(), 0);
     int32_t total_right = accumulate(right.begin(), right.end(), 0);
+
+    // Note: this check will be happen instantly in the inner loop anyway
     if (total_left == total_right)
         return 0;
 
@@ -52,12 +54,13 @@ int32_t solve(const std::vector<int32_t>& left, const std::vector<int32_t>& righ
             max_possible_left_to_right.push_back(max_possible_left_to_right.back() + curr_value);
         }
     }
-    while(max_possible_left_to_right.size() <= left.size() + rem.size() / 2) {
-        max_possible_left_to_right.push_back(max_possible_left_to_right.back());
-    }
-    while(max_possible_right_to_left.size() <= right.size() + rem.size() / 2) {
-        max_possible_right_to_left.push_back(max_possible_right_to_left.back());
-    }
+    // Note: instead of repeating, clamp the index on usage
+//    while(max_possible_left_to_right.size() <= left.size() + rem.size() / 2) {
+//        max_possible_left_to_right.push_back(max_possible_left_to_right.back());
+//    }
+//    while(max_possible_right_to_left.size() <= right.size() + rem.size() / 2) {
+//        max_possible_right_to_left.push_back(max_possible_right_to_left.back());
+//    }
 
     std::vector<Pair2> min_swaps_for(1000000);
     std::vector<Pair2> next_min_swaps_for(1000000);
@@ -90,12 +93,11 @@ int32_t solve(const std::vector<int32_t>& left, const std::vector<int32_t>& righ
                 ++done_left;
             }
 
-            int32_t baseline_left_to_right = max_possible_left_to_right[done_left];
-            int32_t baseline_right_to_left = max_possible_right_to_left[done_right];
+            int32_t baseline_left_to_right = max_possible_left_to_right[std::min(done_left, (int32_t) (max_possible_left_to_right.size()-1))];
+            int32_t baseline_right_to_left = max_possible_right_to_left[std::min(done_right, (int32_t) (max_possible_right_to_left.size()-1))];
             int32_t relative_target = target - rem_sum_left;
 
             auto add = [&](int32_t value_left, int32_t swaps, bool skip1, bool skip2) {
-
                 if (!skip1 && value_left == relative_target)
                     return true;
                 // assert(!(value_left == relative_target));
@@ -105,8 +107,8 @@ int32_t solve(const std::vector<int32_t>& left, const std::vector<int32_t>& righ
                     return false;
                 // assert(!(swaps_remaining <= 0));
 
-                int32_t max_possible_left = value_left + (max_possible_right_to_left[done_right + swaps_remaining] - baseline_right_to_left);
-                int32_t min_possible_left = value_left - (max_possible_left_to_right[done_left + swaps_remaining] - baseline_left_to_right);
+                int32_t max_possible_left = value_left + (max_possible_right_to_left[std::min(done_right + swaps_remaining, (int32_t) (max_possible_right_to_left.size()-1))] - baseline_right_to_left);
+                int32_t min_possible_left = value_left - (max_possible_left_to_right[std::min(done_left + swaps_remaining, (int32_t) (max_possible_left_to_right.size()-1))] - baseline_left_to_right);
 
                 if (!skip2 && (max_possible_left < relative_target || min_possible_left > relative_target))
                     return false;
