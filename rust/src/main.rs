@@ -1,7 +1,7 @@
-use std::cmp::{max, min, Ordering, Reverse};
+use std::cmp::{min, Reverse};
 use std::fmt::Write;
 
-use itertools::{enumerate, Itertools};
+use itertools::Itertools;
 
 fn main() {
     let args = std::env::args().collect_vec();
@@ -45,6 +45,10 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
     let total_left: u32 = left.iter().copied().sum();
     let total_right: u32 = right.iter().copied().sum();
 
+    // basic checks
+    if total_left == total_right {
+        return Some(0);
+    }
     let total = total_left + total_right;
     if total % 2 != 0 {
         return None;
@@ -53,132 +57,170 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
 
     // decision array
     let mut rem = vec![];
-    for (is_right, arr) in [(false, left), (true, right)] {
-        for &x in arr {
-            assert!(x > 0);
-            rem.push((is_right, x));
-        }
-    }
+    rem.extend(left.iter().map(|&x| (false, x)));
+    rem.extend(right.iter().map(|&x| (true, x)));
     rem.sort_by_key(|&(_, x)| Reverse(x));
 
-    let try_solve = |max_swaps: Option<u32>| {
-        // println!("max_swaps={:?}", max_swaps);
+    // max possible
+    let mut max_possible_left_to_right = vec![0];
+    let mut max_possible_right_to_left = vec![0];
+    for &(curr_was_right, curr_value) in &rem {
+        if curr_was_right {
+            max_possible_right_to_left.push(max_possible_right_to_left.last().unwrap() + curr_value);
+        } else {
+            max_possible_left_to_right.push(max_possible_left_to_right.last().unwrap() + curr_value);
+        }
+    }
 
-        // init
-        let mut min_swaps_for: Vec<(u32, u32)> = vec![];
-        let dummy_min_swaps_for_target = max_swaps.map_or(u32::MAX, |m| m + 1);
-        let mut min_swaps_for_target = dummy_min_swaps_for_target;
+    // init
+    let capacity = 1000000;
+    let mut min_swaps_for: Vec<(u32, u32)> = Vec::with_capacity(capacity);
+    let mut next_min_swaps_for: Vec<(u32, u32)> = Vec::with_capacity(capacity);
 
+    // iterate deepening loop
+    for max_swaps in 1..=(rem.len() / 2) as u32 {
+        let mut rem_sum_left = total_left;
+        let mut done_left: u32 = 0;
+        let mut done_right: u32 = 0;
+
+        min_swaps_for.clear();
         min_swaps_for.push((0, 0));
 
-        let mut rem_sum_left = total_left;
-        let mut rem_sum_right = total_right;
-
-        // solver loop
-        for (i, &(curr_was_right, curr_value)) in enumerate(&rem) {
+        // swap loop
+        for &(curr_was_right, curr_value) in &rem {
             if min_swaps_for.is_empty() {
                 break;
             }
 
-            // println!(
-            //     "i={}, solution={:?}, vec_density={:?}/{:?}",
-            //     i,
-            //     if min_swaps_for_target < dummy_min_swaps_for_target { Some(min_swaps_for_target) } else { None },
-            //     min_swaps_for.len(),
-            //     min_swaps_for.last().map(|x| x.0)
-            // );
-
-            // reallocate to preserve iteration speed
-            //   worst case the number of entries doubles, and in practice that turns out to be enough capacity
-            let mut next_min_swaps_for = Vec::with_capacity(min_swaps_for.len() * 2);
+            assert!(next_min_swaps_for.is_empty());
+            if next_min_swaps_for.capacity() < 2 * min_swaps_for.len() + 1 {
+                next_min_swaps_for.reserve(2 * min_swaps_for.len() + 1 - next_min_swaps_for.capacity());
+            }
             let cap_start = next_min_swaps_for.capacity();
 
-            // let vec_sparsity =  min_swaps_for.len() as f64 / min_swaps_for.keys().copied().max().unwrap() as f64;
-            // let map_sparsity = min_swaps_for.len() as f64 / min_swaps_for.capacity() as f64;
-            // println!("Iteration i={}, map_len={}, vec_sparsity={}, map_sparsity={}", i, min_swaps_for.len(), vec_sparsity, map_sparsity);
-
-            let next_value = rem.get(i + 1).map_or(0, |&(_, x)| x);
             if curr_was_right {
-                rem_sum_right -= curr_value;
+                done_right += 1;
             } else {
                 rem_sum_left -= curr_value;
+                done_left += 1;
             }
 
-            let mut add = |value_left, swaps| {
-                // if let Some((prev_value, _)) = next_min_swaps_for.last().copied() {
-                //     assert!(prev_value < value_left);
-                // }
+            let baseline_left_to_right = max_possible_left_to_right[min(done_left as usize, max_possible_left_to_right.len() - 1)];
+            let baseline_right_to_left = max_possible_right_to_left[min(done_right as usize, max_possible_right_to_left.len() - 1)];
+            let relative_target = target - rem_sum_left;
 
-                // too many steps used?
-                if swaps >= min_swaps_for_target {
-                    return;
+            let mut add = |value_left, swaps, skip1: bool, skip2: bool| -> bool {
+                // reached target?
+                if !skip1 && value_left == relative_target {
+                    return true;
                 }
+                debug_assert!(value_left != relative_target);
 
-                // reached target
-                if value_left + rem_sum_left == target {
-                    min_swaps_for_target = min(min_swaps_for_target, swaps);
-                    return;
+                // too many swaps used?
+                if !skip1 && swaps >= max_swaps {
+                    return false;
                 }
+                debug_assert!(swaps < max_swaps);
+                let swaps_remaining = max_swaps - swaps;
 
-                // check target reachability
-                let swaps_left = min_swaps_for_target - swaps;
-                let max_swap_amount = swaps_left.saturating_mul(next_value);
+                // max possible
+                let max_possible_left = value_left + (
+                    max_possible_right_to_left[min((done_right + swaps_remaining) as usize, max_possible_right_to_left.len() - 1)]
+                        - baseline_right_to_left
+                );
+                let min_possible_left = value_left - (
+                    max_possible_left_to_right[min((done_right + swaps_remaining) as usize, max_possible_left_to_right.len() - 1)]
+                        - baseline_left_to_right
+                );
 
-                //   left
-                let max_possible_right_to_left = min(max_swap_amount, rem_sum_right);
-                let max_possible_left = value_left + rem_sum_left + max_possible_right_to_left;
-
-                //   right
-                let value_right = (total - rem_sum_left - rem_sum_right) - value_left;
-                let max_possible_left_to_right = min(max_swap_amount, rem_sum_left);
-                let max_possible_right = value_right + rem_sum_right + max_possible_left_to_right;
-                
-                if max_possible_left < target || max_possible_right < target {
-                    return;
+                // reachable
+                if !skip2 && (max_possible_left < relative_target || min_possible_left > relative_target) {
+                    return false;
                 }
+                debug_assert!(!(max_possible_left < relative_target || min_possible_left > relative_target));
 
+                // push solution
                 next_min_swaps_for.push((value_left, swaps));
+                false
             };
 
-            let mut a = 0;
-            let mut b = 0;
+            // main loop merge
+            if curr_was_right {
+                let mut a = 0;
+                let mut b = 0;
 
-            while let (Some((prev_a, prev_swaps_a)), Some((prev_b, prev_swaps_b))) = (min_swaps_for.get(a).copied(), min_swaps_for.get(b).copied()) {
-                let next_a = prev_a + if !curr_was_right { curr_value } else { 0 };
-                let swaps_a = prev_swaps_a;
+                while a < min_swaps_for.len() {
+                    let next_a = min_swaps_for[a].0;
+                    let mut next_b = min_swaps_for[b].0 + curr_value;
 
-                let next_b = prev_b + if curr_was_right { curr_value } else { 0 };
-                let swaps_b = prev_swaps_b + 1;
-
-                match next_a.cmp(&next_b) {
-                    Ordering::Less => {
-                        add(next_a, swaps_a);
-                        a += 1;
-                    }
-                    Ordering::Greater => {
-                        add(next_b, swaps_b);
+                    while next_b < next_a {
+                        let swaps_b = min_swaps_for[b].1 + 1;
+                        if add(next_b, swaps_b, false, false) {
+                            return Some(max_swaps);
+                        }
                         b += 1;
+                        next_b = min_swaps_for[b].0 + curr_value;
                     }
-                    Ordering::Equal => {
-                        add(next_a, min(swaps_a, swaps_b));
-                        a += 1;
+                    if next_b == next_a {
+                        let swaps_a = min_swaps_for[a].1;
+                        let swaps_b = min_swaps_for[b].1 + 1;
+                        if add(next_a, min(swaps_a, swaps_b), true, true) {
+                            return Some(max_swaps);
+                        }
                         b += 1;
+                    } else {
+                        let swaps_a = min_swaps_for[a].1;
+                        if add(next_a, swaps_a, true, false) {
+                            return Some(max_swaps);
+                        }
                     }
+                    a += 1;
                 }
-            }
-
-            // push remaining items
-            while let Some((prev_a, swaps_a)) = min_swaps_for.get(a).copied() {
-                let next_a = prev_a + if !curr_was_right { curr_value } else { 0 };
-                let swaps_a = swaps_a;
-                add(next_a, swaps_a);
-                a += 1;
-            }
-            while let Some((prev_b, swaps_b)) = min_swaps_for.get(b).copied() {
-                let next_b = prev_b + if curr_was_right { curr_value } else { 0 };
-                let swaps_b = swaps_b + 1;
-                add(next_b, swaps_b);
-                b += 1;
+                while b < min_swaps_for.len() {
+                    let next_b = min_swaps_for[b].0 + curr_value;
+                    let swaps_b = min_swaps_for[b].1 + 1;
+                    if add(next_b, swaps_b, false, false) {
+                        return Some(max_swaps);
+                    }
+                    b += 1;
+                }
+            } else {
+                let mut a = 0;
+                let mut b = 0;
+                while a < min_swaps_for.len() {
+                    let next_a = min_swaps_for[a].0;
+                    let mut next_b = min_swaps_for[b].0 + curr_value;
+                    while next_b < next_a {
+                        let swaps_b = min_swaps_for[b].1;
+                        if add(next_b, swaps_b, true, false) {
+                            return Some(max_swaps);
+                        }
+                        b += 1;
+                        next_b = min_swaps_for[b].0 + curr_value;
+                    }
+                    if next_b == next_a {
+                        let swaps_a = min_swaps_for[a].1 + 1;
+                        let swaps_b = min_swaps_for[b].1;
+                        if add(next_a, min(swaps_a, swaps_b), true, true) {
+                            return Some(max_swaps);
+                        }
+                        b += 1;
+                    } else {
+                        let swaps_a = min_swaps_for[a].1 + 1;
+                        if add(next_a, swaps_a, false, false) {
+                            return Some(max_swaps);
+                        }
+                    }
+                    a += 1;
+                }
+                while b < min_swaps_for.len() {
+                    let next_b = min_swaps_for[b].0 + curr_value;
+                    let swaps_b = min_swaps_for[b].1;
+                    if add(next_b, swaps_b, true, false) {
+                        return Some(max_swaps);
+                    }
+                    b += 1;
+                }
             }
 
             // check that no reallocations happened
@@ -190,30 +232,10 @@ fn solve(left: &[u32], right: &[u32]) -> Option<u32> {
                 next_min_swaps_for.len()
             );
 
-            min_swaps_for = next_min_swaps_for;
-        }
-
-        if min_swaps_for_target == dummy_min_swaps_for_target {
-            None
-        } else {
-            Some(min_swaps_for_target)
+            std::mem::swap(&mut min_swaps_for, &mut next_min_swaps_for);
+            next_min_swaps_for.clear();
         }
     };
 
-    let mut max_swaps = 5;
-    loop {
-        max_swaps += 5;
-
-        if let Some(swaps) = try_solve(Some(max_swaps as u32)) {
-            return Some(swaps);
-        }
-
-        if max_swaps > max(left.len(), right.len()) {
-            break;
-        }
-    }
-
     None
-
-    // min_swaps_for.get(&target).copied()
 }
